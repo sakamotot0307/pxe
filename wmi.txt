@@ -1,0 +1,2 @@
+SELECT * FROM Win32_OperatingSystem WHERE Version = "10.0" AND BuildNumber >= "22000" AND ProductType = "1"
+SELECT * FROM Win32_OperatingSystem WHERE Version = "10.0" AND BuildNumber < "22000" AND ProductType = "1"
