@@ -1,0 +1,3 @@
+FirstName,LastName,UserPrincipalName,Password,EmailAddress,Group,OU,PostalCode,Title,Department,Company
+山田,太郎,taro_yamada@stdom.local,P@ssw0rd123,taro.yamada@dom.local,test,"OU=USER,DC=stdom,DC=local",5,"1","あああ","いいい"
+田中,花子,hanako_tanaka@stdom.local,P@ssw0rd123,hanako.tanaka@dom.local,test,"OU=USER,DC=stdom,DC=local",2,"県","えええ","おおお"
