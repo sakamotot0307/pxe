@@ -1,38 +1,46 @@
-Microsoft Office 2016からOffice 365（現Microsoft 365）への変更において、各アプリケーションの主な変更点を以下にまとめます。
+# 認証情報を設定
+$tenantId = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+$clientId = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+$clientSecret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-### Excel
-1. **リアルタイム共同編集**: 複数ユーザーが同時にスプレッドシートを編集可能。
-2. **新しい関数とデータ分析機能**: TEXTJOIN、IFS、SWITCH、XLOOKUPなどの新関数が追加。
-3. **Power Queryの統合強化**: データの取り込みや整形が簡単にできるように強化。
-4. **クラウド連携**: OneDriveと連携し、クラウドでのデータ保存や共有が容易に。
-5. **AI機能の追加**: Insights（洞察）やデータ型（地理や株価）などのAI支援機能が強化。
+# アクセストークンを取得
+$tokenResponse = Invoke-RestMethod -Method POST -Uri "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token" `
+    -Body @{
+        client_id     = $clientId
+        scope         = "https://graph.microsoft.com/.default"
+        client_secret = $clientSecret
+        grant_type    = "client_credentials"
+    }
 
-### Word
-1. **リアルタイム共同編集**: 複数のユーザーが同時に文書を編集できる。
-2. **クラウド保存と自動保存**: OneDrive連携による自動保存機能が追加。
-3. **AI支援の文書作成**: スマート校正、文書改善の提案機能（エディター）やIdeasが強化。
-4. **アクセシビリティ機能**: 文書のアクセシビリティチェック機能が充実。
-5. **デザイン機能**: より豊富なテーマやスタイルが追加され、文書のデザインが改善。
+$accessToken = $tokenResponse.access_token
 
-### PowerPoint
-1. **デザインアイデア機能**: AIがスライドデザインを自動で提案する「デザイナー」機能が追加。
-2. **リアルタイム共同編集**: 複数人で同時にスライド編集が可能。
-3. **モーフィング機能**: スムーズなアニメーションやオブジェクト間のトランジションが簡単に作成できる「モーフ」機能が追加。
-4. **プレゼンターコーチ**: プレゼンの練習中にAIがリアルタイムでフィードバックを提供。
-5. **高度なビデオ編集**: 埋め込んだビデオの編集やエフェクトが強化され、よりリッチなスライド作成が可能。
+# ヘッダーを用意
+$headers = @{
+    Authorization = "Bearer $accessToken"
+    "Content-Type" = "application/json"
+}
 
-### OneNote
-1. **クラウド同期の強化**: OneNoteは完全にクラウドに対応し、データがすべてOneDriveに自動保存。
-2. **リアルタイム共同編集**: ノートを複数のユーザーが同時に編集できる。
-3. **手書き入力機能の強化**: ペンやタッチ入力での操作がスムーズになり、手書きノートがより使いやすく。
-4. **検索機能の強化**: 手書き文字や画像内のテキストを検索できるOCR機能が向上。
-5. **タスク管理連携**: OutlookやTo Doと統合し、タスクや予定を簡単に管理可能。
+# CSVからデバイス一覧を読み込み
+$devices = Import-Csv -Path "C:\Temp\corpdevices.csv"
 
-### Publisher
-1. **クラウド連携**: OneDriveにデータを保存し、簡単に共有やアクセスができるように。
-2. **デザインテンプレートの追加**: より多くのテンプレートが用意され、簡単にプロフェッショナルな印刷物を作成可能。
-3. **印刷オプションの拡充**: 商業印刷やオンラインでの印刷に対応した拡張オプションが追加。
-4. **高解像度の画像サポート**: より高品質な画像の扱いが容易になり、印刷物の品質向上が図られた。
-5. **フォントとグラフィックの向上**: フォントのレンダリングやグラフィック機能が改善され、より細かな調整が可能。
+foreach ($device in $devices) {
+    $body = @{
+        "@odata.type"               = "#microsoft.graph.importedDeviceIdentity"
+        "importedDeviceIdentifier" = $device.serialNumber
+        "platform"                 = [int]$device.platform
+        "state"                    = "unknown"
+        "description"              = $device.hostname  # 「詳細」欄に表示される内容
+    } | ConvertTo-Json -Depth 10
 
-これらのアプリ全体を通じて、クラウド対応とリアルタイムの共同作業機能が大幅に強化されたのが特徴です。
+    try {
+        Invoke-RestMethod -Method POST `
+            -Uri "https://graph.microsoft.com/v1.0/deviceManagement/importedDeviceIdentities/import" `
+            -Headers $headers -Body $body
+
+        Write-Host "✅ 登録成功: $($device.serialNumber)" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "❌ 登録失敗: $($device.serialNumber)" -ForegroundColor Red
+        Write-Host $_.Exception.Message
+    }
+}
